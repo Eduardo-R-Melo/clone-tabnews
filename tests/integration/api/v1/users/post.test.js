@@ -1,5 +1,7 @@
 import { version as uuidVersion } from "uuid";
 import orchestrator from "tests/orchestrator.js";
+import user from "models/user.js";
+import password from "models/password.js";
 
 beforeAll(async () => {
     await orchestrator.waitForAllServices();
@@ -18,7 +20,7 @@ describe("POST /api/v1/users", () => {
                 body: JSON.stringify({
                     username: "user1",
                     email: "user@gmail.com",
-                    password: "123abc",
+                    password: "senha123",
                 }),
             });
             expect(response.status).toBe(201);
@@ -29,7 +31,7 @@ describe("POST /api/v1/users", () => {
                 id: responseBody.id,
                 username: "user1",
                 email: "user@gmail.com",
-                password: "123abc",
+                password: responseBody.password,
                 created_at: responseBody.created_at,
                 updated_at: responseBody.updated_at,
             });
@@ -37,6 +39,20 @@ describe("POST /api/v1/users", () => {
             expect(uuidVersion(responseBody.id)).toBe(4);
             expect(Date.parse(responseBody.created_at)).not.toBeNaN();
             expect(Date.parse(responseBody.updated_at)).not.toBeNaN();
+
+            const userInDatabase = await user.findOneByUsername("user1");
+            const correctPasswordMatch = await password.compare(
+                "senha123",
+                userInDatabase.password,
+            );
+
+            const incorrectPasswordMatch = await password.compare(
+                "Senha errada",
+                userInDatabase.password,
+            );
+
+            expect(correctPasswordMatch).toBe(true);
+            expect(incorrectPasswordMatch).toBe(false);
         });
 
         test("With duplicated 'email'", async () => {
@@ -66,7 +82,7 @@ describe("POST /api/v1/users", () => {
                     body: JSON.stringify({
                         username: "emailduplicado2",
                         email: "Duplicado@gmail.com",
-                        password: "123abc",
+                        password: "senha123",
                     }),
                 },
             );
@@ -77,7 +93,7 @@ describe("POST /api/v1/users", () => {
             expect(response2Body).toEqual({
                 name: "ValidationError",
                 message: "O e-mail informado já está sendo utilizado.",
-                action: "Utilize outro e-mail para realizar o cadastro.",
+                action: "Utilize outro e-mail para realizar esta operação.",
                 status_code: 400,
             });
         });
@@ -93,7 +109,7 @@ describe("POST /api/v1/users", () => {
                     body: JSON.stringify({
                         username: "userduplicado",
                         email: "email1@gmail.com",
-                        password: "123abc",
+                        password: "senha123",
                     }),
                 },
             );
@@ -109,7 +125,7 @@ describe("POST /api/v1/users", () => {
                     body: JSON.stringify({
                         username: "Userduplicado",
                         email: "email2@gmail.com",
-                        password: "123abc",
+                        password: "senha123",
                     }),
                 },
             );
@@ -120,7 +136,7 @@ describe("POST /api/v1/users", () => {
             expect(response2Body).toEqual({
                 name: "ValidationError",
                 message: "O nome de usuário informado já está sendo utilizado.",
-                action: "Utilize outro nome de usuário para realizar o cadastro.",
+                action: "Utilize outro nome de usuário para realizar esta operação.",
                 status_code: 400,
             });
         });
